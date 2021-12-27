@@ -1,0 +1,4 @@
+rootProject.name = 'names'
+include('lib')
+include('names-model')
+include('names-inmemory')

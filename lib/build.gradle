@@ -1,0 +1,14 @@
+plugins {
+    id 'java-library'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    // implementation 'dnsjava:dnsjava:3.5.0-SNAPSHOT'
+    implementation 'dnsjava:dnsjava:3.4.3'
+    implementation 'io.netty:netty-codec-dns:4.1.72.Final'
+}
