@@ -2,6 +2,7 @@ package names.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 
@@ -55,5 +56,11 @@ class QNameParserTest {
 
     private byte evaluateReadOffsetValue(byte input) {
         return qNameParser.readOffsetValue(input);
+    }
+
+    @Test
+    void test_countLabels() {
+        int i = qNameParser.countLabels("3www8mydomain3com0".getBytes(StandardCharsets.US_ASCII));
+        assert i == 3;
     }
 }

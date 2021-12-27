@@ -6,48 +6,76 @@ import lombok.experimental.Accessors;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.StringJoiner;
 
 
 public class QNameParser {
-    private final byte[] buffer = new byte[10_000];
-    private int bufferPointer = 0;
-    private int lastLabelStartPointer = 0;
-    private final List<Label> labels = new ArrayList<>();
-    private int lastLabelAdded = 0;
-
-    public QNameParser clearLabels() {
-        labels.clear();
-        return this;
-    }
-
     // this whole method -- probably should be a more elegant approach
     public List<String> parse(String qName) {
         List<String> result = new ArrayList<>();
         byte[] bytes = qName.getBytes(StandardCharsets.US_ASCII);
+
+        int numLabels = countLabels(bytes);
+        Label[] labels = new Label[numLabels];
+        int labelsPointer = 0;
+        int thisLabelStart = 0;
+        int thisLabelEnd = 0;
+
         for (int i = 0; i < bytes.length; i++) {
             byte nextChar = bytes[i];
+            /*
+                This is actually a pretty big problem because
+                https://datatracker.ietf.org/doc/html/rfc1035#section-4.1.4
+                says:
+
+                This allows a pointer to be distinguished
+                from a label, since the label must begin with two zero bits b/c
+                labels are restricted to 63 octets or less.
+
+                so, actually - the test is not 'Character.isDigit' but rather:
+                is the remaining 6 bits an ascii 'isDigit'?
+             */
             if (firstTwoBitsAre1(nextChar)) {
                 byte offsetValue = readOffsetValue(nextChar);
             } else if (Character.isDigit(nextChar)) {
-                if (bufferPointer != 0) {
-                    labels.add(new Label()
-                            .setOffset(lastLabelStartPointer)
-                            .setValue(new String(buffer, 0, bufferPointer, StandardCharsets.US_ASCII)));
+                if (labelsPointer > 0) {
+                    labels[labelsPointer - 1]
+                            .setCharSequence(slice(bytes,
+                                    thisLabelStart,
+                                    thisLabelEnd));
                 }
-
-                lastLabelStartPointer = i;
-                bufferPointer = 0;
+                thisLabelStart = i;
+                thisLabelEnd = thisLabelStart;
+                labels[labelsPointer++] = new Label();
 
                 if (nextChar == '0') {
-                    result.add(labels.stream().map(Label::getValue).collect(Collectors.joining(".")));
+                    StringJoiner stringJoiner = new StringJoiner(".");
+                    for (Label label : labels)
+                        stringJoiner.add(label.getCharSequence());
+                    result.add(stringJoiner.toString());
                 }
             } else {
-                buffer[bufferPointer++] = nextChar;
+                thisLabelEnd++;
+                // buffer[bufferPointer++] = nextChar;
             }
         }
 
         return result;
+    }
+
+    public int countLabels(byte[] bytes) {
+        int numLabels = 0;
+        for (byte b : bytes) {
+            if (Character.isDigit(b) &&
+                    Character.getNumericValue(b) > 0) {
+                numLabels++;
+            }
+        }
+        return numLabels;
+    }
+
+    private ByteArraySlice slice(byte[] bytes, int offset, int end) {
+        return new ByteArraySlice(bytes, end, offset);
     }
 
     public boolean firstTwoBitsAre1(byte value) {
@@ -63,5 +91,6 @@ public class QNameParser {
     public static class Label {
         private int offset;
         private String value;
+        private CharSequence charSequence;
     }
 }
