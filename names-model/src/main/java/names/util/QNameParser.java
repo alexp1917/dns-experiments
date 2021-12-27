@@ -21,6 +21,7 @@ public class QNameParser {
         return this;
     }
 
+    // this whole method -- probably should be a more elegant approach
     public List<String> parse(String qName) {
         List<String> result = new ArrayList<>();
         byte[] bytes = qName.getBytes(StandardCharsets.US_ASCII);
