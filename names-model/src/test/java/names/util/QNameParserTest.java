@@ -11,7 +11,9 @@ class QNameParserTest {
 
     // @Test
     void test_single() {
-        List<String> parse = qNameParser.parse("3www8mydomain3com0");
+        List<String> parse = qNameParser.parse(
+                new String(generateQName("www.mydomain.com"),
+                        StandardCharsets.US_ASCII));
         System.out.println(parse);
 
         assert parse.size() == 1;
@@ -80,11 +82,11 @@ class QNameParserTest {
 
         // test first label start
         assert isStartOfLabel(qName_mydomain[0]);
-        byte firstLabelLength = readLabelOffsetOrLength(qName_mydomain[0]);
+        int firstLabelLength = readLabelOffsetOrLength(qName_mydomain[0]);
         assert firstLabelLength == 3;
 
         assert isStartOfLabel(qName_mydomain[4]);
-        byte secondLabelLength = readLabelOffsetOrLength(qName_mydomain[4]);
+        int secondLabelLength = readLabelOffsetOrLength(qName_mydomain[4]);
         assert secondLabelLength == 8;
 
         String firstQNameBits = new String(qName_mydomain, 1, firstLabelLength);
@@ -94,7 +96,7 @@ class QNameParserTest {
         assert secondQNameBits.equals("mydomain");
 
         assert isStartOfLabel(qName_mydomain[13]);
-        byte thirdLabelLength = readLabelOffsetOrLength(qName_mydomain[13]);
+        int thirdLabelLength = readLabelOffsetOrLength(qName_mydomain[13]);
         assert thirdLabelLength == 3;
 
         String thirdQNameBits = new String(qName_mydomain,
@@ -144,16 +146,22 @@ class QNameParserTest {
         assert Byte.toUnsignedInt(desiredByte(true, 63)) == 255;
     }
 
-    boolean isStartOfLabel(byte maybeStart) {
+    boolean isStartOfLabel(int maybeStart) {
         return (maybeStart & 0b11) == 0b00;
     }
 
-    byte readLabelOffsetOrLength(byte label) {
-        byte b = (byte) (label >> 2);
-        System.out.println();
-        return b;
+    int readLabelOffsetOrLength(int label) {
+        return (label >> 2);
     }
 
+    /**
+     * Get a label starting byte
+     *
+     * @param isPointer      should we set the first two bits to indicate pointer
+     *                       to another label, or starting a new label
+     * @param offsetOrLength where we are pointing (or how long we are)
+     * @return byte, because we are assembling a byte array.
+     */
     byte desiredByte(boolean isPointer, int offsetOrLength) {
         if (offsetOrLength < 0 | offsetOrLength > 63)
             throw new IllegalArgumentException();
