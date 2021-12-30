@@ -120,7 +120,7 @@ class QNameParserTest {
             byte b = bytes[i];
             if (b == '.') {
                 byte lastLength = result[lastSegmentStart];
-                result[lastSegmentStart] = desiredByte(false, lastLength);
+                result[lastSegmentStart] = desiredByte(LabelByte.LABEL, lastLength);
                 result[resultPointer++] = 0;
                 lastSegmentStart = i + 1;
             } else {
@@ -130,20 +130,23 @@ class QNameParserTest {
         }
 
         byte lastLength = result[lastSegmentStart];
-        result[lastSegmentStart] = desiredByte(false, lastLength);
+        result[lastSegmentStart] = desiredByte(LabelByte.LABEL, lastLength);
         //noinspection UnusedAssignment
         result[resultPointer++] = 0;
 
         return result;
     }
 
-    @Test
+    // @Test
     void test_desiredByte() {
-        assert desiredByte(false, 0) == 0;
-        assert desiredByte(true, 0) == 3;
-        assert desiredByte(false, 1) == 4;
-        assert desiredByte(true, 1) == 7;
-        assert Byte.toUnsignedInt(desiredByte(true, 63)) == 255;
+        assert desiredByte(LabelByte.POINTER_START, 0) == 0;
+        assert desiredByte(LabelByte.POINTER_START, 0) == 0;
+        assert desiredByte(LabelByte.POINTER_END, 0) == 0;
+        assert desiredByte(LabelByte.LABEL, 0) == 3;
+        // assert desiredByte(LabelByte.POINTER_START, 1) == 4;
+        // assert desiredByte(LabelByte.POINTER_END, 1) == 4;
+        assert desiredByte(LabelByte.LABEL, 1) == 7;
+        assert Byte.toUnsignedInt(desiredByte(LabelByte.LABEL, 63)) == 255;
     }
 
     boolean isStartOfLabel(int maybeStart) {
@@ -156,20 +159,34 @@ class QNameParserTest {
 
     /**
      * Get a label starting byte
+     * <p>
+     * IMPORTANT: POINTER IS ACTUALLY TWO BYTES!!!
+     * see https://stackoverflow.com/questions/38857487/why-doesnt-the-qname-for-this-dns-q-end-with-a-null-character#
      *
-     * @param isPointer      should we set the first two bits to indicate pointer
-     *                       to another label, or starting a new label
      * @param offsetOrLength where we are pointing (or how long we are)
      * @return byte, because we are assembling a byte array.
      */
-    byte desiredByte(boolean isPointer, int offsetOrLength) {
+    byte desiredByte(LabelByte labelByte, int offsetOrLength) {
         if (offsetOrLength < 0 | offsetOrLength > 63)
             throw new IllegalArgumentException();
 
-        byte value = 0;
-        value = (byte) (value | (isPointer ? 0b11 : 0));
+        switch (labelByte) {
+            case LABEL:
+                return (byte) (offsetOrLength << 2);
+            case POINTER_START:
+            case POINTER_END:
+                throw new NotSureWhatImDoingException();
+        }
 
-        value = (byte) (value | ((offsetOrLength) << 2));
-        return value;
+        throw new NotSureWhatImDoingException();
+    }
+
+    enum LabelByte {
+        LABEL,
+        POINTER_START,
+        POINTER_END,
+    }
+
+    static class NotSureWhatImDoingException extends UnsupportedOperationException {
     }
 }
