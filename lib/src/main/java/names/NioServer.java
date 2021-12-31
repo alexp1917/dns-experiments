@@ -1,15 +1,11 @@
 package names;
 
 import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.nio.NioDatagramChannel;
-import io.netty.handler.codec.dns.*;
-import io.netty.resolver.AddressResolver;
-import io.netty.resolver.AddressResolverGroup;
-import io.netty.util.concurrent.EventExecutor;
+import io.netty.handler.codec.dns.DatagramDnsQuery;
 import lombok.extern.slf4j.Slf4j;
 import org.xbill.DNS.ARecord;
 import org.xbill.DNS.Name;
@@ -21,22 +17,11 @@ import java.util.concurrent.Executors;
 
 @Slf4j
 public class NioServer {
+    public static void main(String[] args) {
+        new NioServer().listen(8053);
+    }
+
     public void listen(int port) {
-        // Bootstrap b = new Bootstrap();
-        // ChannelFuture bindFuture = b.bind(port);
-        //
-        // bindFuture.addListener((Future<Void> cf) -> {
-        //
-        // });
-
-        AddressResolverGroup<InetSocketAddress> group1 =
-                new AddressResolverGroup<>() {
-            @Override
-            protected AddressResolver<InetSocketAddress> newResolver(EventExecutor executor) throws Exception {
-                return null;
-            }
-        };
-
         EventLoopGroup group = new NioEventLoopGroup(5,
                 Executors.defaultThreadFactory());
         Bootstrap b = new Bootstrap()
@@ -49,10 +34,11 @@ public class NioServer {
                 .handler(new ChannelInitializer<NioDatagramChannel>() {
 
                     @Override
-                    protected void initChannel(NioDatagramChannel ch) throws Exception {
-                        ch.pipeline().addLast(new DatagramDnsQueryDecoder());
-                        ch.pipeline().addLast(new DatagramDnsQueryEncoder());
-                        ch.pipeline().addLast(new DNSMessageHandler());
+                    protected void initChannel(NioDatagramChannel ch) {
+                        // ch.pipeline().addLast(new DatagramDnsQueryDecoder());
+                        // ch.pipeline().addLast(new DatagramDnsQueryEncoder());
+                        // ch.pipeline().addLast(new DNSMessageHandler());
+                        ch.pipeline().addLast(new ExampleUdpHandler());
                     }
                 });
         ChannelFuture futureBindUDP = b.bind(port);
@@ -67,10 +53,27 @@ public class NioServer {
         });
     }
 
+    /** echo server */
+    public static class ExampleUdpHandler extends SimpleChannelInboundHandler<DatagramPacket> {
+
+        public ExampleUdpHandler() {
+            super(DatagramPacket.class, true);
+        }
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext ctx, DatagramPacket msg) {
+            InetSocketAddress newDest = msg.sender();
+            InetSocketAddress newSender = msg.recipient();
+            ctx.writeAndFlush(new DatagramPacket(msg.content().retain(),
+                    newDest,
+                    newSender));
+        }
+    }
+
     public static class DNSMessageHandler extends SimpleChannelInboundHandler<DatagramDnsQuery> {
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, DatagramDnsQuery msg) throws Exception {
-            Record aRecord = ARecord.newRecord(Name.fromString("localhost"),
+            Record aRecord = ARecord.newRecord(Name.fromString("localhost."),
                     1, 1);
 
             byte[] bytes = aRecord.toWireCanonical();
