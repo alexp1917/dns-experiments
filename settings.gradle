@@ -1,4 +1,15 @@
+pluginManagement {
+    repositories {
+        maven { url 'https://repo.spring.io/milestone' }
+        maven { url 'https://repo.spring.io/snapshot' }
+        gradlePluginPortal()
+    }
+}
+
 rootProject.name = 'names'
 include('lib')
 include('names-model')
 include('names-inmemory')
+include('names-monolith')
+include('names-configuration')
+include('names-server')
